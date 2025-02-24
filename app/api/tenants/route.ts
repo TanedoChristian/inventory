@@ -1,4 +1,3 @@
-import {NextApiResponse} from 'next';
 import Tenant from "@/schema/tenantSchema";
 import dbConnect from "@/lib/mongodb";
 
