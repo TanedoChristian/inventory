@@ -1,59 +1,169 @@
-import React, { useState } from "react";
-import { useZxing } from "react-zxing";
+"use client";
 
-export default function BarcodeReader() {
-  const [scannedResult, setScannedResult] = useState("");
-  const { ref } = useZxing({
-    constraints: {
-      video: {
-        facingMode: "environment"
+import React, { useState, useRef, useEffect } from 'react';
+import Webcam from 'react-webcam';
+import Quagga from 'quagga';
+
+const BarcodeReader = () => {
+  const [barcode, setBarcode] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const webcamRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  const configureQuagga = () => {
+    Quagga.init(
+      {
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: webcamRef.current.video,
+          constraints: {
+            width: 640,
+            height: 480,
+            facingMode: 'environment',
+          },
+        },
+        decoder: {
+          readers: [
+            'ean_reader',
+            'ean_8_reader',
+            'ean_13_reader',
+
+          ],
+        },
+      },
+      (err) => {
+        if (err) {
+          setErrorMsg(`Camera initialization error: ${err}`);
+          return;
+        }
+        Quagga.start();
       }
-    },
-    onDecodeResult: (result) => setScannedResult(result.getText()),
-    onError: (error) => {
-      console.error(error);
-    },
-    formats: [
-      "EAN_13",
-      "EAN_8",
-      "CODE_128",
-      "CODE_39",
-      "UPC_A",
-      "UPC_E",
-      "CODABAR"
-    ],
-    timeBetweenDecodingAttempts: 300,
-    onDecodeAttempt: (result) => {
-      // Optional: Handle decode attempts
-      console.log("Attempting to decode:", result);
-    }
-  });
+    );
+
+    Quagga.onProcessed((result) => {
+      const ctx = canvasRef.current.getContext('2d');
+      if (result) {
+        if (result.boxes) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          const hasNotRead = !result.codeResult;
+
+          if (hasNotRead) {
+            result.boxes.filter((box) => box !== result.box).forEach((box) => {
+              Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, ctx, { color: 'red', lineWidth: 2 });
+            });
+          }
+        }
+
+        if (result.box) {
+          Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, ctx, { color: 'blue', lineWidth: 2 });
+        }
+
+        if (result.codeResult && result.codeResult.code) {
+          Quagga.ImageDebug.drawPath(result.line, { x: 'x', y: 'y' }, ctx, { color: 'green', lineWidth: 3 });
+        }
+      }
+    });
+
+    Quagga.onDetected((result) => {
+      if (result.codeResult.code) {
+        setBarcode(result.codeResult.code);
+        stopScanner();
+      }
+    });
+  };
+
+  const startScanner = () => {
+    setScanning(true);
+    setBarcode('');
+    setErrorMsg('');
+    setTimeout(() => {
+      if (webcamRef.current && webcamRef.current.video) {
+        configureQuagga();
+      }
+    }, 1000);
+  };
+
+  const stopScanner = () => {
+    setScanning(false);
+    Quagga.stop();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scanning) {
+        Quagga.stop();
+      }
+    };
+  }, [scanning]);
 
   return (
-    <div className="flex flex-col items-center space-y-4 p-4">
-      <div className="relative w-full max-w-md">
-        <video 
-          ref={ref} 
-          className="w-full border rounded"
-          style={{ maxHeight: '70vh' }}
-        />
-        <div className="absolute inset-0 border-2 border-red-500 border-dashed pointer-events-none">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2/3 h-1/3 border-2 border-green-500 border-dashed"></div>
+    <div className="flex flex-col items-center p-4 max-w-lg mx-auto">
+      
+      <div className="relative w-full mb-4">
+        {scanning ? (
+          <>
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{
+                facingMode: 'environment',
+              }}
+              className="w-full rounded border"
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute top-0 left-0 w-full h-full"
+              width={640}
+              height={480}
+            />
+          </>
+        ) : (
+          <div className="border-2  bg-gray-100 h-64 flex items-center justify-center rounded">
+            <div className="text-center">
+              <p className="text-gray-500 mb-4">Scan here</p>
+              
+            </div>
           </div>
-        </div>
+        )}
       </div>
-      {scannedResult && (
-        <div className="bg-green-100 p-4 rounded-lg w-full max-w-md">
-          <p className="text-lg font-bold">Scanned: {scannedResult}</p>
+
+      {errorMsg && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded w-full">
+          <p>{errorMsg}</p>
         </div>
       )}
-      <button 
-        onClick={() => setScannedResult("")}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-      >
-        Reset
-      </button>
+
+      <div className="flex space-x-4">
+        {!scanning ? (
+          <button
+            onClick={startScanner}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Start Scanning
+          </button>
+        ) : (
+          <button
+            onClick={stopScanner}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Stop Scanning
+          </button>
+        )}
+      </div>
+
+      {barcode && (
+                <div className="mb-4 p-3 bg-blue-100 border  rounded mt-10">
+                  <p className="font-bold">Barcode: {barcode}</p>
+                 
+                </div>
+              )}
+
+     
     </div>
   );
-}
+};
+
+export default BarcodeReader;
