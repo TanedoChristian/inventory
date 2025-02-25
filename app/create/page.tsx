@@ -7,7 +7,7 @@ export default function Page() {
 
     const handleCreateTenant = async () =>{
         await axios.post('/api/tenants', {
-            name: 'adminCj',
+            name: 'Tenant Test',
             code: 'codespehere.io'});
     }
 

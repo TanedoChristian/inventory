@@ -1,17 +1,76 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("POSTGRES_URL")
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
 }
-
 
 model Tenant {
   id        String   @id @default(uuid())
   name      String
-  domain    String?  
+  domain    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  inventory Inventory[]
+  products  Product[]
+  users     User[]
+  categories Category[]
+}
+
+
+model Product {
+  id String @id @default(uuid())
+  code String?
+  image String?
+  description String?
+  price Decimal
+  categoryId String
+  name String
+  tenantId String
+  inventory Inventory[]
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Category {
+    id        String    @id @default(uuid())
+    name      String
+    tenantId  String
+    tenant    Tenant    @relation(fields: [tenantId], references: [id])
+    products  Product[]
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    @@unique([name, tenantId])
+}
+
+
+model Inventory {
+    id          String    @id @default(uuid())
+    quantity    Int       @default(0)
+    minQuantity Int       @default(0)
+    productId   String
+    product     Product   @relation(fields: [productId], references: [id])
+    warehouseId String
+    tenantId    String
+    tenant      Tenant    @relation(fields: [tenantId], references: [id])
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    @@unique([productId, warehouseId, tenantId])
 }
