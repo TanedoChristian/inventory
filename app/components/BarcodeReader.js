@@ -126,15 +126,10 @@ const BarcodeReader = () => {
             />
           </>
         ) : (
-          <div className="border-2 border-dashed border-gray-300 bg-gray-100 h-64 flex items-center justify-center rounded">
+          <div className="border-2  bg-gray-100 h-64 flex items-center justify-center rounded">
             <div className="text-center">
-              <p className="text-gray-500 mb-4">Camera will appear here</p>
-              {barcode && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                  <p className="font-bold">Barcode Detected:</p>
-                  <p className="text-lg">{barcode}</p>
-                </div>
-              )}
+              <p className="text-gray-500 mb-4">Scan here</p>
+              
             </div>
           </div>
         )}
@@ -164,15 +159,14 @@ const BarcodeReader = () => {
         )}
       </div>
 
-      <div className="mt-6 text-sm text-gray-500 w-full">
-        <h3 className="font-bold mb-2">Instructions:</h3>
-        <ol className="list-decimal pl-5 space-y-1">
-          <li>Click "Start Scanning" to activate your camera</li>
-          <li>Point your camera at a barcode</li>
-          <li>Hold steady until the barcode is detected</li>
-          <li>The scanner will automatically stop when a barcode is found</li>
-        </ol>
-      </div>
+      {barcode && (
+                <div className="mb-4 p-3 bg-blue-100 border  rounded mt-10">
+                  <p className="font-bold">Barcode: {barcode}</p>
+                 
+                </div>
+              )}
+
+     
     </div>
   );
 };
