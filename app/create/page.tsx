@@ -1,19 +1,14 @@
 "use client";
 
+import axios from "axios";
+
 
 export default function Page() {
 
-    const handleCreateTenant = () =>{
-        fetch('/api/tenants', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: 'Tenant 1',
-                code: 'T1'
-            })
-        });
+    const handleCreateTenant = async () =>{
+        await axios.post('/api/tenants', {
+            name: 'adminCj',
+            code: 'codespehere.io'});
     }
 
     return (
