@@ -8,6 +8,7 @@ const BarcodeReader = () => {
   const [barcode, setBarcode] = useState('');
   const [scanning, setScanning] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -19,8 +20,8 @@ const BarcodeReader = () => {
           type: 'LiveStream',
           target: webcamRef.current.video,
           constraints: {
-            width: 640,
-            height: 480,
+            width: 1280,
+            height: 720,
             facingMode: 'environment',
           },
         },
@@ -29,9 +30,18 @@ const BarcodeReader = () => {
             'ean_reader',
             'ean_8_reader',
             'ean_13_reader',
-
+            'code_128_reader',
+            'upc_reader',
+            'upc_e_reader',
           ],
         },
+        locator: {
+          halfSample: true,
+          patchSize: 'medium',
+        },
+        locate: true,
+        numOfWorkers: navigator.hardwareConcurrency || 4,
+        frequency: 10,
       },
       (err) => {
         if (err) {
@@ -70,6 +80,14 @@ const BarcodeReader = () => {
       if (result.codeResult.code) {
         setBarcode(result.codeResult.code);
         stopScanner();
+      } else if (retryCount < 3) {
+        setRetryCount(retryCount + 1);
+        setTimeout(() => {
+          Quagga.start();
+        }, 500);
+      } else {
+        setErrorMsg('Failed to detect barcode. Please try again.');
+        stopScanner();
       }
     });
   };
@@ -78,6 +96,7 @@ const BarcodeReader = () => {
     setScanning(true);
     setBarcode('');
     setErrorMsg('');
+    setRetryCount(0);
     setTimeout(() => {
       if (webcamRef.current && webcamRef.current.video) {
         configureQuagga();
@@ -100,7 +119,6 @@ const BarcodeReader = () => {
 
   return (
     <div className="flex flex-col items-center p-4 max-w-lg mx-auto">
-      
       <div className="relative w-full mb-4">
         {scanning ? (
           <>
@@ -116,15 +134,18 @@ const BarcodeReader = () => {
             <canvas
               ref={canvasRef}
               className="absolute top-0 left-0 w-full h-full"
-              width={640}
-              height={480}
+              width={1280}
+              height={720}
             />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="w-64 h-32 border-4 border-green-500 rounded-lg"></div>
+              <p className="text-white text-center mt-2">Align barcode here</p>
+            </div>
           </>
         ) : (
-          <div className="border-2  bg-gray-100 h-64 flex items-center justify-center rounded">
+          <div className="border-2 bg-gray-100 h-64 flex items-center justify-center rounded">
             <div className="text-center">
               <p className="text-gray-500 mb-4">Scan here</p>
-              
             </div>
           </div>
         )}
@@ -155,13 +176,10 @@ const BarcodeReader = () => {
       </div>
 
       {barcode && (
-                <div className="mb-4 p-3 bg-blue-100 border  rounded mt-10">
-                  <p className="font-bold">Barcode: {barcode}</p>
-                 
-                </div>
-              )}
-
-     
+        <div className="mb-4 p-3 bg-blue-100 border rounded mt-10">
+          <p className="font-bold">Barcode: {barcode}</p>
+        </div>
+      )}
     </div>
   );
 };
