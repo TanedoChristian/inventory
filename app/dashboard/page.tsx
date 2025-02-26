@@ -1,11 +1,16 @@
 import Link from 'next/link';
-import { PlusCircle, Package, DollarSign, FileText } from 'lucide-react';
+import { PlusCircle, Package, DollarSign, FileText, LucideIcon } from 'lucide-react';
 import Header from '../components/Header';
 
+interface DashboardCardProps {
+  title: string;
+  icon: LucideIcon;
+  href: string;
+  description: string;
+}
 
 
-
-const DashboardCard = ({ title, icon: Icon, href, description }: any) => (
+const DashboardCard = ({ title, icon: Icon, href, description }: DashboardCardProps) => (
   <Link 
     href={href}
     className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-200 group"

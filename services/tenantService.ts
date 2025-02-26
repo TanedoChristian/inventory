@@ -28,7 +28,3 @@ export async function createTenant(data: TenantSchema){
 
 
 
-export async function createPost(data: any){
-    const post = await prisma.post.create({data: {...data}});
-    return post;
-}
