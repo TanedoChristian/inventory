@@ -15,7 +15,7 @@ import {
 import BaseInput from "../BaseInput";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from "html5-qrcode";
 
 const productFormSchema = z.object({
@@ -37,6 +37,7 @@ interface ProductFormProps {
 export default function ProductForm({ onSubmit, product }: ProductFormProps) {
   const [scanning, setScanning] = useState(false);
   const [html5Qrcode, setHtml5Qrcode] = useState<Html5Qrcode | null>(null);
+  const scannerRef = useRef<HTMLDivElement | null>(null);
 
   const form = useForm<ProductFormData>({
     defaultValues: {
@@ -57,68 +58,61 @@ export default function ProductForm({ onSubmit, product }: ProductFormProps) {
     }
   };
 
-  const startScanning = () => {
+  const getQrBoxSize = () => {
+    const screenWidth = window.innerWidth;
+    return screenWidth < 640 ? screenWidth * 0.8 : 250; // Responsive size
+  };
+
+  const startScanning = async () => {
     setScanning(true);
-  };
 
-  const stopScanning = () => {
-    setScanning(false);
-    html5Qrcode
-      ?.stop()
-      .then(() => {
-        console.log("QR Code scanning stopped.");
-      })
-      .catch((err) => {
-        console.error("Failed to stop scanning.", err);
-      });
-  };
+    setTimeout(() => {
+      if (!scannerRef.current) return;
 
-  useEffect(() => {
-    if (scanning) {
       const config: Html5QrcodeCameraScanConfig = {
-        fps: 10,
-        qrbox: 200,
+        fps: 30,
+        qrbox: { width: getQrBoxSize(), height: getQrBoxSize() }, // Dynamic sizing
+        aspectRatio: 1.0, // Maintain a square scan box
+        disableFlip: false, // Allow flipping if needed
       };
 
-      const html5Qrcode = new Html5Qrcode("barcode-scanner");
-      setHtml5Qrcode(html5Qrcode);
+      const scanner = new Html5Qrcode("barcode-scanner");
+      setHtml5Qrcode(scanner);
 
-      html5Qrcode
+      scanner
         .start(
           { facingMode: "environment" }, // Use the rear camera
           config,
-          (decodedText, decodedResult) => {
+          (decodedText) => {
             console.log("✅ Scanned Code:", decodedText);
-            console.log("📌 Format Type:", decodedResult.result.format);
-
             form.setValue("code", decodedText);
             stopScanning();
           },
           (errorMessage) => {
-            console.log("Scanning error:", errorMessage);
-            if (errorMessage.includes("NotFoundException")) {
-              console.log(
-                "No code detected. Please ensure the code is clear and properly positioned."
-              );
-            }
+            console.warn("Scanning error:", errorMessage);
           }
         )
         .catch((err) => {
-          console.error("Unable to start scanning.", err);
+          console.error("Failed to start scanner:", err);
+          setScanning(false);
         });
-    } else {
-      if (html5Qrcode) {
-        html5Qrcode
-          .stop()
-          .then(() => {
-            console.log("QR Code scanning stopped.");
-          })
-          .catch((err) => {
-            console.error("Failed to stop scanning.", err);
-          });
-      }
+    }, 100);
+  };
+
+  const stopScanning = () => {
+    if (html5Qrcode) {
+      html5Qrcode.stop().catch((err) => console.error("Failed to stop", err));
     }
-  }, [scanning]);
+    setScanning(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (html5Qrcode) {
+        html5Qrcode.stop().catch(() => {});
+      }
+    };
+  }, [html5Qrcode]);
 
   return (
     <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-800">
@@ -201,7 +195,11 @@ export default function ProductForm({ onSubmit, product }: ProductFormProps) {
                   <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 z-10 animate-scan-line"></div>
 
                   {/* Barcode Scanner */}
-                  <div id="barcode-scanner" className="w-full h-full"></div>
+                  <div
+                    ref={scannerRef}
+                    id="barcode-scanner"
+                    className="w-full h-full"
+                  ></div>
                 </div>
               )}
             </div>
