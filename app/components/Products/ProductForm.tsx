@@ -36,8 +36,7 @@ interface ProductFormProps {
 
 export default function ProductForm({ onSubmit, product }: ProductFormProps) {
   const [scanning, setScanning] = useState(false);
-  const [html5Qrcode, setHtml5Qrcode] = useState<Html5Qrcode | null>(null);
-  const scannerRef = useRef<HTMLDivElement | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   const form = useForm<ProductFormData>({
     defaultValues: {
@@ -60,28 +59,33 @@ export default function ProductForm({ onSubmit, product }: ProductFormProps) {
 
   const getQrBoxSize = () => {
     const screenWidth = window.innerWidth;
-    return screenWidth < 640 ? screenWidth * 0.8 : 250; // Responsive size
+    return screenWidth < 640 ? screenWidth * 0.8 : 250;
   };
 
   const startScanning = async () => {
     setScanning(true);
 
-    setTimeout(() => {
-      if (!scannerRef.current) return;
+    setTimeout(async () => {
+      const scannerElement = document.getElementById("barcode-scanner");
+      if (!scannerElement) {
+        console.error("Scanner element not found!");
+        setScanning(false);
+        return;
+      }
+
+      const scanner = new Html5Qrcode("barcode-scanner");
+      scannerRef.current = scanner;
 
       const config: Html5QrcodeCameraScanConfig = {
         fps: 30,
-        qrbox: { width: getQrBoxSize(), height: getQrBoxSize() }, // Dynamic sizing
-        aspectRatio: 1.0, // Maintain a square scan box
-        disableFlip: false, // Allow flipping if needed
+        qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
+        aspectRatio: 1.0,
+        disableFlip: false,
       };
 
-      const scanner = new Html5Qrcode("barcode-scanner");
-      setHtml5Qrcode(scanner);
-
-      scanner
-        .start(
-          { facingMode: "environment" }, // Use the rear camera
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
           config,
           (decodedText) => {
             console.log("✅ Scanned Code:", decodedText);
@@ -91,28 +95,33 @@ export default function ProductForm({ onSubmit, product }: ProductFormProps) {
           (errorMessage) => {
             console.warn("Scanning error:", errorMessage);
           }
-        )
-        .catch((err) => {
-          console.error("Failed to start scanner:", err);
-          setScanning(false);
-        });
-    }, 100);
+        );
+      } catch (err) {
+        console.error("Failed to start scanner:", err);
+        setScanning(false);
+      }
+    }, 200); // Small delay to ensure element is mounted
   };
 
-  const stopScanning = () => {
-    if (html5Qrcode) {
-      html5Qrcode.stop().catch((err) => console.error("Failed to stop", err));
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      } catch (err) {
+        console.error("Failed to stop scanning:", err);
+      }
     }
     setScanning(false);
   };
 
   useEffect(() => {
     return () => {
-      if (html5Qrcode) {
-        html5Qrcode.stop().catch(() => {});
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
       }
     };
-  }, [html5Qrcode]);
+  }, []);
 
   return (
     <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-800">
@@ -191,15 +200,11 @@ export default function ProductForm({ onSubmit, product }: ProductFormProps) {
 
               {scanning && (
                 <div className="relative w-full max-w-[500px] h-[300px] mx-auto overflow-hidden">
-                  {/* Line Indicator */}
                   <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 z-10 animate-scan-line"></div>
-
-                  {/* Barcode Scanner */}
-                  <div
-                    ref={scannerRef}
-                    id="barcode-scanner"
-                    className="w-full h-full"
-                  ></div>
+                  <div id="barcode-scanner" className="w-full h-full"></div>
+                  <button onClick={stopScanning} className="mt-2 text-red-500">
+                    Stop Scanning
+                  </button>
                 </div>
               )}
             </div>
